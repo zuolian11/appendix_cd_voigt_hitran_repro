@@ -9,11 +9,11 @@ Python reproduction of **Appendix C** (Humlíček Voigt fitting program) and **A
 
 | File | Description |
 |---|---|
-| `voigt_humlicek.py` | Faithful NumPy port of the book's Appendix C `Voigt.m` (Humlíček 1982) + 3 self-checks (area = √π, line-center `e^(a²)erfc(a)`, cross-check vs FFT convolution) |
+| `voigt_humlicek.py` | NumPy port of the book's Appendix C `Voigt.m` (Humlíček 1982) + 3 self-checks (area = √π, line-center `e^(a²)erfc(a)`, cross-check vs FFT convolution) |
 | `reproduce_appendixD.py` | Full Appendix D.1 example: HITRAN linestrength temperature scaling → unit conversion → Doppler/collisional widths → Voigt → absorbance spectrum |
 | `h2o_doublet_absorbance.csv` | Grid data: α₁, α₂, α_total, transmittance vs wavenumber |
 | `h2o_doublet_spectrum.svg` | Absorbance spectrum figure (browser-viewable; generated without matplotlib) |
-| `附录C与D_复现与讲解.md` | Detailed walkthrough in Chinese: physics, formulas, knowledge & skill checklist, exercises |
+| `工作流程总结.md` | Brief summary (Chinese) of the IR-LAS working principle & workflow behind this reproduction |
 
 ## Quick start
 
@@ -50,8 +50,7 @@ Conditions: **T = 1000 K, P = 1 atm, 10 % H₂O in air, L = 10 cm**.
 ⚠️ The book prints the per-atm linestrength of Line 2 as `2.237e-3`; combined with its own
 `S₂(1000 K) = 3.05e-21` and the conversion factor `7.34e21/T` this appears to be an
 order-of-magnitude typo — the self-consistent value is ≈ `2.24e-2 cm⁻² atm⁻¹`, which also
-agrees with the total peak absorbance ≈ 0.3 in the book's Fig. D.3. See the walkthrough
-document for the full argument.
+agrees with the total peak absorbance ≈ 0.3 in the book's Fig. D.3.
 
 ## Pipeline implemented
 
@@ -60,5 +59,3 @@ Voigt (Humlíček) → per-line αⱼ(ν) = Sⱼ(T)·P·X·φⱼ(ν)·L → sum 
 
 The linestrength scaling uses the RRHO approximation of Eq. D.2 (within ~2 % of the
 HITRAN-partition-function result D.6 for 296–1500 K, per the book's Fig. D.1).
-
-*Educational notes (in Chinese) are included in `附录C与D_复现与讲解.md`.*
