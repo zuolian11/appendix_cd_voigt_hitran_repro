@@ -1,61 +1,52 @@
-# Appendix C & D Reproduction — Voigt profile & HITRAN H₂O spectrum example
+# Real-HITRAN CO Spectrum Simulation
 
-Python reproduction of **Appendix C** (Humlíček Voigt fitting program) and **Appendix D.1** (H₂O doublet absorbance example) of:
-
-> R. K. Hanson, R. M. Spearrin, C. S. Goldenstein, *Spectroscopy and Optical Diagnostics for Gases*, Springer International Publishing Switzerland, 2016.
-> ISBN 978-3-319-23251-5 · DOI [10.1007/978-3-319-23252-2](https://doi.org/10.1007/978-3-319-23252-2)
+Reproduction of the *"CO (v″, v′) = (0,1) rovibrational band, T = 1000 K, P = 1 atm,
+χ_CO = 0.01 in air, L = 1 cm"* example spectrum using **real HITRAN line-by-line data**
+(downloaded from [hitran.org](https://www.hitran.org) following the Standard "Crash
+course on absorption spectroscopy" tutorial) — instead of the two hand-picked lines in
+the Appendix D of Hanson et al. 2016.
 
 ## Files
 
-| File | Description |
+| File | Role |
 |---|---|
-| `voigt_humlicek.py` | NumPy port of the book's Appendix C `Voigt.m` (Humlíček 1982) + 3 self-checks (area = √π, line-center `e^(a²)erfc(a)`, cross-check vs FFT convolution) |
-| `reproduce_appendixD.py` | Full Appendix D.1 example: HITRAN linestrength temperature scaling → unit conversion → Doppler/collisional widths → Voigt → absorbance spectrum |
-| `h2o_doublet_absorbance.csv` | Grid data: α₁, α₂, α_total, transmittance vs wavenumber |
-| `h2o_doublet_spectrum.svg` | Absorbance spectrum figure (browser-viewable; generated without matplotlib) |
-| `工作流程总结.md` | Brief summary (Chinese) of the IR-LAS working principle & workflow behind this reproduction |
+| `hitran_par.py` | HITRAN `.par` **parser** (fixed-width 100/160-char columns → arrays) |
+| `voigt_humlicek.py` | **Voigt lineshape** algorithm (Humlíček 1982, 4-region rational approx) + self-checks |
+| `simulate_hitran_co.py` | Real-data CO spectrum simulator (temperature scaling → widths → Voigt → sum) |
+| `simulate_co_figure.py` | Two-panel figure: full band + zoom (P = 1 vs 5 atm) |
+| `co_figure_T1000K_X0.01_L1.svg` | **Result figure** (open in browser) |
+| `co_T1000K_X0.01_L1_full.csv` | Grid: ν, α(ν) — full band (1900–2300 cm⁻¹) |
+| `co_T1000K_X0.01_L1_zoom_p1.csv` | Grid: ν, α(ν) — zoom (P = 1 atm) |
+| `co_T1000K_X0.01_L1_zoom_p5.csv` | Grid: ν, α(ν) — zoom (P = 5 atm) |
+
+> The raw `.par` dataset is stored locally in `hitran_data/` (kept out of the repo to keep
+> it clean/download-size small). To run, point the scripts at your own CO `.par`.
 
 ## Quick start
 
 ```bash
-python voigt_humlicek.py        # self-checks of the Humlíček implementation
-python reproduce_appendixD.py   # reproduces the H₂O doublet example (prints + CSV/SVG)
+python hitran_par.py <co.par> --band 2000,2300        # parse + sanity checks
+python simulate_co_figure.py <co.par>                 # regenerate the two-panel figure
 ```
 
-Requires only Python ≥ 3.8 with NumPy.
+Requires Python ≥ 3.8 + NumPy.
 
-## Example being reproduced (Appendix D.1)
+## Result (real HITRAN data, 1258 lines in window)
 
-H₂O doublet near 7185.6 cm⁻¹ (≈1392.67 nm), HITRAN2012 parameters (Table D.3):
-
-| Line | ν₀ [cm⁻¹] | S(296 K) [cm⁻¹/(molecule·cm⁻²)] | γ_air | γ_self | E″ [cm⁻¹] | n_air |
-|---|---|---|---|---|---|---|
-| 1 | 7185.596571 | 2.00e-22 | 0.0342 | 0.371 | 1045.0583 | 0.62 |
-| 2 | 7185.596909 | 5.98e-22 | 0.0421 | 0.195 | 1045.0577 | 0.62 |
-
-Conditions: **T = 1000 K, P = 1 atm, 10 % H₂O in air, L = 10 cm**.
-
-### Reproduction vs book values
-
-| Quantity | This repo | Book |
-|---|---|---|
-| S₁(1000 K), per molecule | 1.025e-21 | 1.02e-21 |
-| S₂(1000 K), per molecule | 3.066e-21 | 3.05e-21 |
-| Doppler FWHM | 0.0383 cm⁻¹ | 0.0384 cm⁻¹ |
-| Collisional FWHM (Line 1 / 2) | 0.0587 / 0.0513 cm⁻¹ | 0.0587 / 0.0513 cm⁻¹ |
-| S₁ → cm⁻² atm⁻¹ (1000 K) | 7.53e-3 | 7.487e-3 |
-| S₂ → cm⁻² atm⁻¹ (1000 K) | 2.25e-2 | printed 2.237e-3 ⚠️ |
-| Total peak absorbance | ≈ 0.29 | Fig. D.3 ≈ 0.3 |
-
-⚠️ The book prints the per-atm linestrength of Line 2 as `2.237e-3`; combined with its own
-`S₂(1000 K) = 3.05e-21` and the conversion factor `7.34e21/T` this appears to be an
-order-of-magnitude typo — the self-consistent value is ≈ `2.24e-2 cm⁻² atm⁻¹`, which also
-agrees with the total peak absorbance ≈ 0.3 in the book's Fig. D.3.
+- **Full band** (left panel): peak absorbance **α ≈ 0.20 @ 2206 cm⁻¹** (R-branch), with the
+  characteristic P-branch (~2100 cm⁻¹) / R-branch (~2200 cm⁻¹) double-lobe structure.
+- **Zoom 2044–2058 cm⁻¹** (right panel): P = 1 atm → α ≈ 0.146, P = 5 atm → α ≈ 0.151
+  (@ 2055.4 cm⁻¹); the 5 atm lines are broader and slightly taller (pressure broadening
+  ∝ P scales with total absorption).
+- **Validation**: integrated absorbance `∫α dν ≈ Σ S·P·X·L` (energy conservation, ratio ≈ 1.000)
+  and the anchor line `ν₀ = 2147.08 cm⁻¹, E″ = 0` == CO 1-0 **R(0)**.
 
 ## Pipeline implemented
 
-`look up HITRAN params → scale S(T) → convert units → Doppler & collisional widths →
-Voigt (Humlíček) → per-line αⱼ(ν) = Sⱼ(T)·P·X·φⱼ(ν)·L → sum → transmittance`
+`parse .par → windowing → linestrength temperature scaling (partition/Boltzmann/stimulated-emission)
+→ per-atm unit conversion (×7.34e21/T) → Doppler + collisional FWHM (mixture-weighted, HWHM→2γ)
+→ Voigt (Humlíček) → α(ν) = Σ_j S_j(T)·P·X·φ_j(ν)·L → transmittance`
 
-The linestrength scaling uses the RRHO approximation of Eq. D.2 (within ~2 % of the
-HITRAN-partition-function result D.6 for 296–1500 K, per the book's Fig. D.1).
+Key pitfalls handled: `.par` fixed-width columns (100 vs 160 chars; `n_air` 4-char, `δ` 8-char
+fields), HWHM vs FWHM, missing `n_self`/shift temperature exponents (defaults 0.75 / 0.96),
+and grid step ≪ line width.
