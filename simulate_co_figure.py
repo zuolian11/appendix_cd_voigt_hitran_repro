@@ -28,11 +28,19 @@ def spectrum(d, nu, T, P, X, L):
     dnuD = doppler_fwhm(d["nu0"], T, M_CO)
     a = np.sqrt(np.log(2.0)) * dnuC / np.maximum(dnuD, 1e-12)
     alpha = np.zeros_like(nu)
+    # 翼部截断（Voigt 在 |X|>~35 时已可忽略），每条线只写它真正影响到的网格点
+    CUT = 35.0
     for j in range(len(d["nu0"])):
         alphaD = dnuD[j] / (2.0 * np.sqrt(np.log(2.0)))
-        Xg = (nu - nu0[j]) / alphaD
+        if alphaD <= 0:
+            continue
+        half = CUT * alphaD
+        lo, hi = np.searchsorted(nu, [nu0[j] - half, nu0[j] + half])
+        if hi <= lo:
+            continue
+        Xg = (nu[lo:hi] - nu0[j]) / alphaD
         phi = voigt_humlicek(Xg, a[j]) / (alphaD * np.sqrt(np.pi))
-        alpha += S_atm[j] * P * X * phi * L
+        alpha[lo:hi] += S_atm[j] * P * X * phi * L
     return alpha
 
 
@@ -81,6 +89,10 @@ def main():
     ap.add_argument("--nu-max", type=float, default=2300.0, dest="nu_max")
     ap.add_argument("--zoom-a", type=float, default=2044.0, dest="za")
     ap.add_argument("--zoom-b", type=float, default=2058.0, dest="zb")
+    ap.add_argument("--step-band", type=float, default=0.005, dest="sband",
+                    help="full-band grid step [cm-1] (dense, ~10+ pts per line)")
+    ap.add_argument("--step-zoom", type=float, default=0.001, dest="szoom",
+                    help="zoom grid step [cm-1] (very dense)")
     args = ap.parse_args()
 
     T, X, L = args.T, args.X, args.L
@@ -88,12 +100,12 @@ def main():
     print(f"lines in {args.nu_min:.0f}-{args.nu_max:.0f}: {d['parsed_n']}")
 
     # ---- 左图: 全谱带 @ P=1 atm ----
-    nuL = np.arange(args.nu_min, args.nu_max + 1e-9, 0.05)
+    nuL = np.arange(args.nu_min, args.nu_max + 1e-9, args.sband)
     aL = spectrum(d, nuL, T, 1.0, X, L)
-    print(f"left: peak alpha={aL.max():.4f} @ {nuL[np.argmax(aL)]:.2f} cm^-1")
+    print(f"left: peak alpha={aL.max():.4f} @ {nuL[np.argmax(aL)]:.3f} cm^-1")
 
     # ---- 右图: 缩放窗口, P=1 vs P=5 ----
-    nuR = np.arange(args.za, args.zb + 1e-9, 0.005)
+    nuR = np.arange(args.za, args.zb + 1e-9, args.szoom)
     aR1 = spectrum(d, nuR, T, 1.0, X, L)
     aR5 = spectrum(d, nuR, T, 5.0, X, L)
     print(f"right: peak(1atm)={aR1.max():.4f} @ {nuR[np.argmax(aR1)]:.3f}; "
